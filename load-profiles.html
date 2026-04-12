@@ -1,0 +1,286 @@
+---
+layout: default
+title: Load Profiles
+subtitle: "Average daily load profile by month · Adjust trackers to see solar offset"
+---
+
+<div class="kpi-grid">
+  <div class="kpi">
+    <p class="kpi-label">System size</p>
+    <p class="kpi-val" id="kSize">10 trackers</p>
+    <p class="kpi-sub" id="kDC">428.4 kW DC</p>
+  </div>
+  <div class="kpi kpi-hi">
+    <p class="kpi-label">Est. annual production</p>
+    <p class="kpi-val" id="kProd">—</p>
+    <p class="kpi-sub" id="kOffset">of building load</p>
+  </div>
+  <div class="kpi">
+    <p class="kpi-label">Peak solar (this month)</p>
+    <p class="kpi-val" id="kPeakSolar">—</p>
+    <p class="kpi-sub" id="kPeakHour">midday peak</p>
+  </div>
+  <div class="kpi kpi-peak">
+    <p class="kpi-label">Peak export (this month)</p>
+    <p class="kpi-val" id="kExport">—</p>
+    <p class="kpi-sub">max over-generation</p>
+  </div>
+</div>
+
+<div class="sec">Controls</div>
+<div style="background:var(--bg-secondary);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:1.25rem">
+  <div class="slider-row" style="margin-bottom:1rem">
+    <label style="font-size:13px;font-weight:500;color:var(--text-primary);min-width:180px">Number of trackers</label>
+    <input type="range" id="sTrackers" min="1" max="50" step="1" value="10">
+    <span id="vTrackers" style="font-size:16px;font-weight:500;min-width:52px;text-align:right;color:var(--text-primary)">10</span>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px" id="monthBtns"></div>
+</div>
+
+<div class="sec">Average daily load profile</div>
+<div class="leg">
+  <span><span class="sw" style="background:#1F3864;opacity:.5;border:1.5px dashed #1F3864"></span>Gross demand</span>
+  <span><span class="sw" style="background:#D85A30"></span>Net load (grid)</span>
+  <span><span class="sw" style="background:#1D9E75"></span>Solar production</span>
+  <span><span class="sw" style="background:#B5D4F4"></span>Solar offset (shaded area)</span>
+  <span><span class="sw" style="background:#e8e0d4"></span>Over-generation (export)</span>
+</div>
+<div style="position:relative;width:100%;height:320px">
+  <canvas id="cProfile" role="img" aria-label="Average daily load profile showing gross demand, net load, and solar production by hour">Interactive load profile chart.</canvas>
+</div>
+
+<div class="sec" style="margin-top:1.5rem">Monthly energy offset summary</div>
+<div style="position:relative;width:100%;height:200px">
+  <canvas id="cMonthly" role="img" aria-label="Monthly solar energy offset compared to building load">Monthly offset bar chart.</canvas>
+</div>
+
+<div class="note">
+  Solar production scaled linearly from 1-tracker CCE Tools simulation (hourly AC output). Load profile derived from Green Button 15-minute interval data averaged by month. Net load = building demand minus solar; values below zero indicate over-generation (potential export). Tracker spec: Mechatron M18KD-20 dual-axis, 72× 595W panels per tracker (~42.8 kW DC each).
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const TRACKER_KW = 42.84;
+const ANNUAL_LOAD_KWH = 4180000;
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const HOURS = ['00','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23'];
+
+const TRACKER_1 = {"1":[0,0,0,0,0,0,0,0,12.704,21.871,26.744,29.117,29.089,29.394,28.354,27.66,23.162,13.559,0,0,0,0,0,0],"2":[0,0,0,0,0,0,0,0.189,16.988,22.741,26.441,26.233,27.289,29.503,27.769,27.504,24.161,18.874,0.789,0,0,0,0,0],"3":[0,0,0,0,0,0,0,8.14,17.256,22.842,27.181,30.522,31.526,31.333,29.871,27.461,25.541,20.756,8.191,0,0,0,0,0],"4":[0,0,0,0,0,0,1.994,18.408,14.979,21.427,25.577,28.465,30.727,30.642,30.404,30.99,29.088,25.263,16.985,0,0,0,0,0],"5":[0,0,0,0,0,0,8.863,18.591,19.542,21.564,25.165,26.767,30.424,30.413,30.815,30.257,27.271,22.305,16.817,0.939,0,0,0,0],"6":[0,0,0,0,0,0,15.283,10.387,17.035,24.324,24.714,27.511,28.709,30.109,31.115,30.646,28.295,24.519,21.836,8.416,0,0,0,0],"7":[0,0,0,0,0,0,10.452,18.909,17.347,25.066,28.768,31.183,32.984,32.453,32.927,33.283,31.64,28.763,23.251,7.272,0,0,0,0],"8":[0,0,0,0,0,0,2.445,17.263,16.499,24.37,30.313,31.886,32.589,32.905,31.94,31.747,30.224,26.46,17.325,0.813,0,0,0,0],"9":[0,0,0,0,0,0,0,12.004,15.483,22.567,28.528,30.294,30.51,30.425,29.297,28.897,26.492,22.474,6.891,0,0,0,0,0],"10":[0,0,0,0,0,0,0,12.48,18.206,25.811,26.962,30.318,32.015,32.132,30.384,28.399,25.024,16.278,0,0,0,0,0,0],"11":[0,0,0,0,0,0,0,1.901,17.085,20.435,26.554,28.64,30.871,31.414,30.522,26.49,22.512,5.437,0,0,0,0,0,0],"12":[0,0,0,0,0,0,0,0,16.447,22.846,27.161,28.125,29.533,29.758,26.413,24.158,19.558,2.373,0,0,0,0,0,0]};
+
+const LOAD = {"1":[345.2,345.0,344.3,343.6,343.9,351.8,360.2,364.2,370.4,377.9,382.6,383.5,383.5,385.0,383.3,382.4,379.4,377.1,374.0,360.6,356.2,347.6,347.6,346.3],"2":[349.9,349.1,348.8,348.8,349.2,360.5,367.9,374.1,385.7,397.0,400.3,399.7,398.8,399.2,398.0,398.2,395.3,390.2,385.4,369.1,363.2,353.8,352.5,351.2],"3":[354.3,353.1,352.7,352.7,352.5,363.8,371.3,377.0,389.2,400.5,405.2,405.3,402.6,402.4,402.3,401.9,398.9,392.5,388.9,372.7,367.0,358.2,358.5,357.3],"4":[357.3,356.2,356.1,355.9,354.5,364.5,370.8,377.4,389.5,402.5,408.9,409.5,407.4,405.8,404.6,403.9,402.5,396.5,391.3,375.6,370.6,361.5,360.1,359.4],"5":[361.5,361.2,360.7,359.7,360.5,369.7,372.5,383.6,395.4,404.9,409.8,410.9,408.8,407.9,406.4,405.3,402.7,397.4,392.2,378.0,376.2,366.3,365.6,364.8],"6":[498.2,495.8,495.5,494.5,494.2,506.8,519.9,534.5,547.4,560.9,566.3,565.8,564.4,563.8,562.7,563.2,559.3,552.9,545.0,517.0,516.3,500.1,499.1,500.0],"7":[581.5,581.8,581.4,579.7,580.0,594.5,606.2,626.5,637.8,653.0,658.9,661.1,658.8,657.4,656.4,654.3,650.7,644.4,635.1,603.3,601.7,585.8,583.1,582.5],"8":[362.7,361.9,360.4,360.7,360.6,369.9,379.6,394.3,401.1,409.0,414.6,416.3,415.1,414.5,414.1,412.0,410.5,408.0,401.8,379.8,374.9,365.9,365.5,363.9],"9":[358.2,358.4,357.9,356.7,356.5,366.2,375.1,382.3,391.1,400.1,403.9,403.6,404.7,403.1,403.5,403.2,401.6,394.5,388.5,372.6,368.3,359.2,360.2,359.4],"10":[349.9,349.3,348.7,347.7,347.1,355.3,365.5,370.1,379.2,390.5,395.2,396.7,394.5,394.1,394.6,394.1,391.6,384.2,381.0,364.8,359.8,352.5,352.4,351.1],"11":[351.4,362.2,349.7,348.6,348.0,356.5,363.7,373.2,382.8,392.3,398.9,400.9,399.0,398.4,398.1,396.5,390.6,386.1,381.7,366.4,361.3,353.1,352.4,352.0],"12":[341.8,341.9,341.6,341.5,341.7,350.4,359.2,364.1,370.6,378.6,380.9,381.6,381.2,381.2,380.1,377.9,374.5,374.3,370.8,357.6,353.2,344.4,344.4,343.5]};
+
+// Days per month for annual calc
+const DAYS = [31,28,31,30,31,30,31,31,30,31,30,31];
+
+let currentMonth = 3; // March default
+let numTrackers = 10;
+const charts = {};
+
+function mkChart(id,cfg){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg);}
+
+const gc='rgba(0,0,0,.06)', lc='#888', tf={size:11};
+
+function getSolar(m, n) {
+  return TRACKER_1[String(m)].map(v => v * n);
+}
+
+function getNetLoad(m, n) {
+  const load = LOAD[String(m)];
+  const solar = getSolar(m, n);
+  return load.map((v,i) => v - solar[i]);
+}
+
+function updateKPIs(m, n) {
+  const solar = getSolar(m, n);
+  const load = LOAD[String(m)];
+  const net = getNetLoad(m, n);
+
+  const peakSolar = Math.max(...solar);
+  const peakHour = solar.indexOf(peakSolar);
+  const maxExport = Math.max(0, -Math.min(...net));
+
+  // Annual production
+  let annualProd = 0;
+  for (let mo = 1; mo <= 12; mo++) {
+    const s = getSolar(mo, n);
+    const l = LOAD[String(mo)];
+    const usable = s.map((v,i) => Math.min(v, l[i]));
+    annualProd += usable.reduce((a,b)=>a+b,0) * DAYS[mo-1];
+  }
+
+  const offsetPct = Math.min(annualProd / ANNUAL_LOAD_KWH * 100, 100);
+
+  document.getElementById('kSize').textContent = n + ' tracker' + (n===1?'':'s');
+  document.getElementById('kDC').textContent = (n * TRACKER_KW).toFixed(1) + ' kW DC';
+  document.getElementById('kProd').textContent = Math.round(annualProd/1000) + 'k kWh/yr';
+  document.getElementById('kOffset').textContent = offsetPct.toFixed(1) + '% of building load';
+  document.getElementById('kPeakSolar').textContent = peakSolar.toFixed(1) + ' kW';
+  document.getElementById('kPeakHour').textContent = 'peak at ' + HOURS[peakHour] + ':00';
+  document.getElementById('kExport').textContent = maxExport > 0.5 ? maxExport.toFixed(1) + ' kW' : 'none';
+}
+
+function buildProfileChart(m, n) {
+  const load = LOAD[String(m)];
+  const solar = getSolar(m, n);
+  const net = getNetLoad(m, n);
+
+  // Offset area = portion of load covered by solar (min of solar, load) per hour
+  const offset = solar.map((v,i) => Math.min(v, load[i]));
+  // Export = max(0, solar - load)
+  const exportArr = solar.map((v,i) => Math.max(0, v - load[i]));
+
+  mkChart('cProfile', {
+    type: 'line',
+    data: {
+      labels: HOURS,
+      datasets: [
+        {
+          label: 'Gross demand',
+          data: load,
+          borderColor: '#1F3864',
+          borderWidth: 2,
+          borderDash: [6,3],
+          backgroundColor: 'transparent',
+          pointRadius: 0,
+          tension: 0.3,
+          order: 1
+        },
+        {
+          label: 'Net load (grid)',
+          data: net,
+          borderColor: '#D85A30',
+          borderWidth: 2,
+          backgroundColor: 'rgba(216,90,48,0.12)',
+          fill: true,
+          pointRadius: 0,
+          tension: 0.3,
+          order: 2
+        },
+        {
+          label: 'Solar production',
+          data: solar,
+          borderColor: '#1D9E75',
+          borderWidth: 2,
+          backgroundColor: 'rgba(29,158,117,0.15)',
+          fill: true,
+          pointRadius: 0,
+          tension: 0.3,
+          order: 3
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: c => {
+              const v = c.parsed.y;
+              return c.dataset.label + ': ' + (v < 0 ? '' : '') + v.toFixed(1) + ' kW';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: lc, font: tf, autoSkip: true, maxTicksLimit: 12 }, grid: { color: gc } },
+        y: {
+          ticks: { color: lc, font: tf, callback: v => v + ' kW' },
+          grid: { color: gc },
+          title: { display: true, text: 'kW (hourly average)', color: lc, font: { size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+function buildMonthlyChart(n) {
+  const offsets = MONTH_NAMES.map((_,i) => {
+    const m = i + 1;
+    const solar = getSolar(m, n);
+    const load = LOAD[String(m)];
+    const usable = solar.map((v,j) => Math.min(v, load[j]));
+    const dailyOffset = usable.reduce((a,b)=>a+b,0);
+    const dailyLoad = load.reduce((a,b)=>a+b,0);
+    return { offset: dailyOffset, load: dailyLoad, pct: dailyOffset/dailyLoad*100 };
+  });
+
+  mkChart('cMonthly', {
+    type: 'bar',
+    data: {
+      labels: MONTH_NAMES,
+      datasets: [
+        {
+          label: 'Solar offset (kWh/day avg)',
+          data: offsets.map(o => Math.round(o.offset)),
+          backgroundColor: '#1D9E75',
+          stack: 's'
+        },
+        {
+          label: 'Remaining load (kWh/day avg)',
+          data: offsets.map(o => Math.round(o.load - o.offset)),
+          backgroundColor: 'rgba(216,90,48,0.25)',
+          stack: 's'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: c => c.dataset.label + ': ' + c.parsed.y.toLocaleString() + ' kWh',
+            afterBody: (items) => {
+              const i = items[0].dataIndex;
+              return ['Offset: ' + offsets[i].pct.toFixed(1) + '%'];
+            }
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true, ticks: { color: lc, font: tf }, grid: { color: gc } },
+        y: { stacked: true, ticks: { color: lc, font: tf, callback: v => v + ' kW' }, grid: { color: gc } }
+      }
+    }
+  });
+}
+
+function update() {
+  updateKPIs(currentMonth, numTrackers);
+  buildProfileChart(currentMonth, numTrackers);
+  buildMonthlyChart(numTrackers);
+  // Update month button styles
+  document.querySelectorAll('.mbtn').forEach(b => {
+    const active = parseInt(b.dataset.month) === currentMonth;
+    b.style.background = active ? '#1D9E75' : '';
+    b.style.color = active ? '#fff' : '';
+    b.style.borderColor = active ? '#1D9E75' : '';
+  });
+}
+
+// Build month buttons
+const btnContainer = document.getElementById('monthBtns');
+MONTH_NAMES.forEach((name, i) => {
+  const m = i + 1;
+  const btn = document.createElement('button');
+  btn.className = 'tab mbtn';
+  btn.dataset.month = m;
+  btn.textContent = name;
+  btn.onclick = () => { currentMonth = m; update(); };
+  btnContainer.appendChild(btn);
+});
+
+// Tracker slider
+const sl = document.getElementById('sTrackers');
+sl.addEventListener('input', () => {
+  numTrackers = parseInt(sl.value);
+  document.getElementById('vTrackers').textContent = numTrackers;
+  update();
+});
+
+setTimeout(update, 150);
+</script>
