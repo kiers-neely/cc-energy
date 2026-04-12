@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project MOVE — Solar Savings Model</title>
+  <style>
+    /* ── Reset & base ───────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --sidebar-w: 220px;
+      --navy: #1F3864;
+      --navy-dark: #162849;
+      --accent: #534AB7;
+      --accent-light: #EEEDFE;
+      --accent-text: #3C3489;
+      --text-primary: #212529;
+      --text-secondary: #6c757d;
+      --text-tertiary: #868e96;
+      --bg-page: #f4f6fb;
+      --bg-card: #ffffff;
+      --bg-secondary: #f8f9fa;
+      --bg-warning: #fff3cd;
+      --bg-info: #d1ecf1;
+      --bg-success: #d4edda;
+      --text-info: #0c5460;
+      --text-success: #155724;
+      --border: #dee2e6;
+      --border-light: #e9ecef;
+      --border-info: #bee5eb;
+      --border-success: #c3e6cb;
+      --radius: 6px;
+      --radius-lg: 10px;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-page);
+      color: var(--text-primary);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar (identical to index.html) ─────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-height: 100vh;
+      background: var(--navy);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0;
+      z-index: 100;
+    }
+    .sidebar-brand {
+      padding: 20px 18px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .sidebar-brand-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .sidebar-brand-sub {
+      font-size: 11px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+    .sidebar-nav { padding: 12px 0; flex: 1; }
+    .nav-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.35);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: 12px 18px 6px;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 18px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .nav-link:hover { background: rgba(255,255,255,0.07); color: #ffffff; }
+    .nav-link.active { background: rgba(255,255,255,0.1); color: #ffffff; border-left-color: #7B73CC; }
+    .nav-icon { width: 16px; height: 16px; opacity: .75; flex-shrink: 0; }
+    .nav-link.active .nav-icon { opacity: 1; }
+    .sidebar-footer {
+      padding: 14px 18px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      font-size: 10px;
+      color: rgba(255,255,255,0.3);
+      line-height: 1.5;
+    }
+
+    /* ── Main content ───────────────────────────────────────── */
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      padding: 32px 36px;
+      max-width: 960px;
+    }
+    .page-title { font-size: 22px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+    .page-sub {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 1.75rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    /* ── Solar savings components ───────────────────────────── */
+    .sr-only { position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden }
+    .kpi-grid { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:1.5rem }
+    .kpi { background:var(--bg-secondary);border-radius:var(--radius);padding:12px 14px }
+    .kpi-label { font-size:11px;color:var(--text-secondary);margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em }
+    .kpi-val { font-size:19px;font-weight:500;color:var(--text-primary);margin:0 }
+    .kpi-sub { font-size:11px;color:var(--text-tertiary);margin:2px 0 0 }
+    .kpi-hi { background:var(--bg-success) }
+    .kpi-hi .kpi-val { color:var(--text-success) }
+    .sec { font-size:11px;font-weight:500;color:var(--text-secondary);margin:1.4rem 0 8px;text-transform:uppercase;letter-spacing:.05em;border-bottom:.5px solid var(--border-light);padding-bottom:4px }
+    .tab-bar { display:flex;gap:4px;margin-bottom:.75rem;flex-wrap:wrap }
+    .tab { font-size:12px;padding:4px 12px;border-radius:var(--radius);border:1px solid #ccc;background:#f5f5f5;color:var(--text-secondary);cursor:pointer }
+    .tab:hover { background:#e0e0e0 }
+    .tab.on { background:var(--bg-success);color:var(--text-success);border-color:var(--border-success) }
+    .leg { display:flex;flex-wrap:wrap;gap:14px;margin-bottom:6px;font-size:12px;color:var(--text-secondary) }
+    .leg span { display:flex;align-items:center;gap:5px }
+    .sw { width:10px;height:10px;border-radius:2px;display:inline-block }
+    .sw-dash { width:18px;height:0;display:inline-block;border-top:2px dashed }
+    .slider-row { display:flex;align-items:center;gap:10px;margin-bottom:.5rem }
+    .slider-row label { font-size:12px;color:var(--text-secondary);min-width:180px }
+    .slider-row input[type=range] { flex:1;accent-color:var(--accent) }
+    .slider-row span { font-size:12px;font-weight:500;color:var(--text-primary);min-width:52px;text-align:right }
+    .assm-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:.5rem }
+    .assm { background:var(--bg-secondary);border-radius:var(--radius);padding:10px 12px;border-left:3px solid var(--accent) }
+    .assm-label { font-size:10px;color:var(--text-secondary);margin:0 0 2px;text-transform:uppercase;letter-spacing:.04em }
+    .assm-val { font-size:15px;font-weight:500;color:var(--text-primary);margin:0 }
+    .assm-sub { font-size:10px;color:var(--text-tertiary);margin:1px 0 0 }
+    .note { font-size:11px;color:var(--text-tertiary);margin-top:1rem;padding-top:.75rem;border-top:.5px solid var(--border-light);line-height:1.7 }
+  </style>
+</head>
+<body>
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-title">Project MOVE</div>
+      <div class="sidebar-brand-sub">Viasat N1 · 2502 Gateway Rd<br>Carlsbad CA 92009</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Analysis</div>
+      <a class="nav-link" href="index.html">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="1" y="8" width="3" height="7" rx=".5"/><rect x="6" y="5" width="3" height="10" rx=".5"/><rect x="11" y="2" width="3" height="13" rx=".5"/>
+        </svg>
+        Utility Dashboard
+      </a>
+      <a class="nav-link active" href="solar-savings.html">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="3"/><line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/><line x1="3" y1="3" x2="4.5" y2="4.5"/><line x1="11.5" y1="11.5" x2="13" y2="13"/><line x1="13" y1="3" x2="11.5" y2="4.5"/><line x1="4.5" y1="11.5" x2="3" y2="13"/>
+        </svg>
+        Solar Savings Model
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      SDG&E Acct 0028 5584 3795 7<br>
+      Meter 06700126 · AL-TOU2
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+    <h1 class="page-title">Solar Savings Model</h1>
+    <p class="page-sub">10× Mechatron M18KD-20 dual-axis tracker · 720× 595W panels · 428.4 kW DC · ITC 50%</p>
+
+    <div class="kpi-grid">
+      <div class="kpi kpi-hi">
+        <p class="kpi-label">Year 1 savings</p>
+        <p class="kpi-val" id="kYr1">—</p>
+        <p class="kpi-sub">energy + demand</p>
+      </div>
+      <div class="kpi kpi-hi">
+        <p class="kpi-label">Simple payback</p>
+        <p class="kpi-val" id="kPB">—</p>
+        <p class="kpi-sub">after 50% ITC</p>
+      </div>
+      <div class="kpi">
+        <p class="kpi-label">25-yr NPV</p>
+        <p class="kpi-val" id="kNPV">—</p>
+        <p class="kpi-sub" id="kNPVsub">at 6% discount rate</p>
+      </div>
+      <div class="kpi">
+        <p class="kpi-label">Annual production</p>
+        <p class="kpi-val" id="kProd">—</p>
+        <p class="kpi-sub" id="kOffset">% of N1 usage offset</p>
+      </div>
+    </div>
+
+    <div class="sec">Adjust assumptions</div>
+    <div style="background:var(--bg-secondary);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:1rem">
+      <div class="slider-row">
+        <label>Capacity factor (%)</label>
+        <input type="range" id="sCF" min="14" max="24" step="1" value="19">
+        <span id="vCF">19%</span>
+      </div>
+      <div class="slider-row">
+        <label>Utility escalation (%/yr)</label>
+        <input type="range" id="sEsc" min="1" max="8" step="1" value="3">
+        <span id="vEsc">3%</span>
+      </div>
+      <div class="slider-row">
+        <label>Discount rate (%)</label>
+        <input type="range" id="sDR" min="3" max="10" step="1" value="6">
+        <span id="vDR">6%</span>
+      </div>
+      <div class="slider-row">
+        <label>Demand savings (%)</label>
+        <input type="range" id="sDem" min="0" max="30" step="1" value="15">
+        <span id="vDem">15%</span>
+      </div>
+    </div>
+
+    <div class="sec">Financial charts</div>
+    <div class="tab-bar">
+      <button class="tab on" onclick="showTab('monthly',this)">Monthly savings</button>
+      <button class="tab" onclick="showTab('cashflow',this)">25-yr cash flow</button>
+      <button class="tab" onclick="showTab('breakdown',this)">Savings breakdown</button>
+    </div>
+
+    <div id="pnl-monthly">
+      <div class="leg">
+        <span><span class="sw" style="background:#639922"></span>Energy savings (CE offset)</span>
+        <span><span class="sw" style="background:#1D9E75"></span>Demand savings</span>
+      </div>
+      <div style="position:relative;width:100%;height:260px">
+        <canvas id="cMonthly" role="img" aria-label="Monthly solar savings bar chart showing energy and demand savings by month">Monthly savings stacked by energy and demand components.</canvas>
+      </div>
+    </div>
+
+    <div id="pnl-cashflow" style="display:none">
+      <div class="leg">
+        <span><span class="sw" style="background:#534AB7"></span>Cumulative net cash flow</span>
+        <span><span class="sw-dash" style="border-color:#D85A30"></span>Break-even line</span>
+      </div>
+      <div style="position:relative;width:100%;height:260px">
+        <canvas id="cCashflow" role="img" aria-label="25-year cumulative cash flow line chart showing payback period crossover">Cumulative cash flow over 25 years showing payback crossover point.</canvas>
+      </div>
+    </div>
+
+    <div id="pnl-breakdown" style="display:none">
+      <div class="leg">
+        <span><span class="sw" style="background:#639922"></span>Energy savings</span>
+        <span><span class="sw" style="background:#1D9E75"></span>Demand savings</span>
+        <span><span class="sw" style="background:#888780"></span>Remaining bill</span>
+      </div>
+      <div style="position:relative;width:100%;height:260px">
+        <canvas id="cBreakdown" role="img" aria-label="Stacked bar chart showing annual bill broken into solar savings and remaining bill">Annual bill breakdown showing savings vs remaining cost.</canvas>
+      </div>
+    </div>
+
+    <div class="sec">Key assumptions</div>
+    <div class="assm-grid">
+      <div class="assm">
+        <p class="assm-label">Gross system cost</p>
+        <p class="assm-val">$1,614,424</p>
+        <p class="assm-sub">$3.77/W DC installed</p>
+      </div>
+      <div class="assm">
+        <p class="assm-label">ITC credit (50%)</p>
+        <p class="assm-val">−$807,212</p>
+        <p class="assm-sub">30% base + 10% DC + 10% energy community</p>
+      </div>
+      <div class="assm">
+        <p class="assm-label">Net cost after ITC</p>
+        <p class="assm-val">$807,212</p>
+        <p class="assm-sub">effective capital outlay</p>
+      </div>
+      <div class="assm">
+        <p class="assm-label">CE energy rate</p>
+        <p class="assm-val">11.36 ¢/kWh</p>
+        <p class="assm-sub">gen + ancillary · PCIA/Wildfire excluded</p>
+      </div>
+      <div class="assm">
+        <p class="assm-label">Panel degradation</p>
+        <p class="assm-val">0.5%/yr</p>
+        <p class="assm-sub">typical monocrystalline</p>
+      </div>
+      <div class="assm">
+        <p class="assm-label">Annual O&amp;M estimate</p>
+        <p class="assm-val">$8,000/yr</p>
+        <p class="assm-sub">~$0.011/W · tracker maintenance</p>
+      </div>
+    </div>
+
+    <div class="note">
+      Demand savings modeled conservatively as a % reduction on SDG&amp;E TOU demand charge ($46.18/kW current rate) — actual savings depend on whether solar production coincides with the monthly peak demand interval. Energy savings exclude PCIA (0.518¢/kWh) and Wildfire Fund (0.561¢/kWh) as non-bypassable charges. Production uses dual-axis tracker capacity factor for Carlsbad coastal TMY — refine with Helioscope hourly output for higher precision. ITC 50% rate assumes domestic content and energy community adders qualify; verify with tax counsel before Safe Harbor commitment.
+    </div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script>
+    const SYS_KW = 428.4;
+    const GROSS_COST = 1614424;
+    const NET_COST = GROSS_COST * 0.5;
+    const OM_ANNUAL = 8000;
+    const DEGRAD = 0.005;
+    const CE_RATE = 0.1136;
+    const ANNUAL_KWH = 4180000;
+    const ANNUAL_BILL = 1000000;
+    const DEMAND_CHARGE_ANNUAL = 245000;
+    const MONTH_LABELS = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May'];
+    const MONTH_KWH = [295168,296395,323224,305404,322003,283083,298713,316766,295715,279082,316369,276281,274080,297954];
+    const CF_MONTHLY = [0.155,0.165,0.195,0.215,0.210,0.200,0.185,0.160,0.140,0.130,0.145,0.160,0.155,0.165];
+
+    const gc='rgba(0,0,0,.06)', lc='#888', tf={size:11};
+    const baseOpts={
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:lc,font:tf,autoSkip:false,maxRotation:45},grid:{color:gc}},
+              y:{ticks:{color:lc,font:tf},grid:{color:gc}}}
+    };
+    const charts={};
+    function mkChart(id,cfg){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg);}
+
+    function getParams(){
+      return {
+        cf:+document.getElementById('sCF').value/100,
+        esc:+document.getElementById('sEsc').value/100,
+        dr:+document.getElementById('sDR').value/100,
+        demPct:+document.getElementById('sDem').value/100
+      };
+    }
+
+    function calcMonthly(cf,demPct){
+      return CF_MONTHLY.map((cfm,i)=>{
+        const scaledCF=cfm*(cf/0.19);
+        const prod=SYS_KW*scaledCF*(365/12*24);
+        const usable=Math.min(prod,MONTH_KWH[i]);
+        const energySavings=usable*CE_RATE;
+        const demSavings=(DEMAND_CHARGE_ANNUAL/14)*demPct;
+        return {prod,usable,energySavings,demSavings,total:energySavings+demSavings};
+      });
+    }
+
+    function calc25yr(cf,esc,dr,demPct){
+      const monthly=calcMonthly(cf,demPct);
+      const yr1Energy=monthly.reduce((s,m)=>s+m.energySavings,0);
+      const yr1Demand=monthly.reduce((s,m)=>s+m.demSavings,0);
+      const yr1Total=yr1Energy+yr1Demand;
+      let cumCF=-NET_COST, npv=-NET_COST;
+      const cumArr=[];
+      let payback=null;
+      for(let y=1;y<=25;y++){
+        const savings=yr1Total*Math.pow(1-DEGRAD,y-1)*Math.pow(1+esc,y-1)-OM_ANNUAL;
+        cumCF+=savings;
+        npv+=savings/Math.pow(1+dr,y);
+        cumArr.push(Math.round(cumCF));
+        if(payback===null&&cumCF>=0)payback=y;
+      }
+      const annualProd=monthly.reduce((s,m)=>s+m.prod,0);
+      return {yr1Total,yr1Energy,yr1Demand,cumArr,npv,payback,annualProd};
+    }
+
+    function update(){
+      const {cf,esc,dr,demPct}=getParams();
+      const {yr1Total,yr1Energy,yr1Demand,cumArr,npv,payback,annualProd}=calc25yr(cf,esc,dr,demPct);
+      const offsetPct=Math.min(annualProd/ANNUAL_KWH*100,100);
+      document.getElementById('kYr1').textContent='$'+Math.round(yr1Total).toLocaleString();
+      document.getElementById('kPB').textContent=payback?payback+' yrs':'>25 yrs';
+      document.getElementById('kNPV').textContent=(npv>=0?'$':'-$')+Math.abs(Math.round(npv)).toLocaleString();
+      document.getElementById('kNPVsub').textContent='at '+Math.round(dr*100)+'% discount rate';
+      document.getElementById('kProd').textContent=Math.round(annualProd/1000)+'k kWh/yr';
+      document.getElementById('kOffset').textContent=offsetPct.toFixed(1)+'% of N1 usage offset';
+      const activeTab=document.querySelector('.tab.on');
+      if(activeTab){
+        const name=activeTab.textContent.trim();
+        if(name.includes('Monthly'))rebuildMonthly(calcMonthly(cf,demPct));
+        else if(name.includes('cash'))rebuildCashflow(cumArr);
+        else if(name.includes('breakdown'))rebuildBreakdown(yr1Energy,yr1Demand);
+      }
+    }
+
+    function rebuildMonthly(monthly){
+      mkChart('cMonthly',{type:'bar',data:{labels:MONTH_LABELS,datasets:[
+        {label:'Energy savings',data:monthly.map(m=>Math.round(m.energySavings)),backgroundColor:'#639922',stack:'s'},
+        {label:'Demand savings',data:monthly.map(m=>Math.round(m.demSavings)),backgroundColor:'#1D9E75',stack:'s'}
+      ]},options:{...baseOpts,
+        scales:{...baseOpts.scales,x:{...baseOpts.scales.x,stacked:true},y:{...baseOpts.scales.y,stacked:true,ticks:{...baseOpts.scales.y.ticks,callback:v=>'$'+(v/1000).toFixed(0)+'k'}}},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': $'+Math.round(c.parsed.y).toLocaleString()}}}}});
+    }
+
+    function rebuildCashflow(cumArr){
+      const yrs=Array.from({length:25},(_,i)=>'Yr '+(i+1));
+      mkChart('cCashflow',{type:'line',data:{labels:yrs,datasets:[
+        {label:'Cumulative cash flow',data:cumArr,borderColor:'#534AB7',backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:2},
+        {label:'Break-even',data:Array(25).fill(0),borderColor:'#D85A30',backgroundColor:'transparent',borderWidth:1,borderDash:[4,3],pointRadius:0}
+      ]},options:{...baseOpts,
+        scales:{...baseOpts.scales,y:{...baseOpts.scales.y,ticks:{...baseOpts.scales.y.ticks,callback:v=>(v<0?'-$':'$')+Math.abs(Math.round(v/1000))+'k'}}},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Cumulative cash flow'?(c.parsed.y<0?'-$':'$')+Math.abs(Math.round(c.parsed.y)).toLocaleString():'$0'}}}}});
+    }
+
+    function rebuildBreakdown(yr1Energy,yr1Demand){
+      const annRemain=Math.round(ANNUAL_BILL-yr1Energy-yr1Demand);
+      mkChart('cBreakdown',{type:'bar',data:{
+        labels:['Year 1 bill breakdown'],
+        datasets:[
+          {label:'Remaining bill',data:[annRemain],backgroundColor:'#888780'},
+          {label:'Demand savings',data:[Math.round(yr1Demand)],backgroundColor:'#1D9E75'},
+          {label:'Energy savings',data:[Math.round(yr1Energy)],backgroundColor:'#639922'}
+        ]
+      },options:{...baseOpts,
+        scales:{...baseOpts.scales,x:{...baseOpts.scales.x,stacked:true},y:{...baseOpts.scales.y,stacked:true,ticks:{...baseOpts.scales.y.ticks,callback:v=>'$'+(v/1000).toFixed(0)+'k'}}},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': $'+Math.round(c.parsed.y).toLocaleString()}}}}});
+    }
+
+    function showTab(name,btn){
+      ['monthly','cashflow','breakdown'].forEach(n=>{
+        document.getElementById('pnl-'+n).style.display=n===name?'block':'none';
+      });
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+      if(btn)btn.classList.add('on');
+      const {cf,esc,dr,demPct}=getParams();
+      const {yr1Energy,yr1Demand,cumArr}=calc25yr(cf,esc,dr,demPct);
+      if(name==='monthly')rebuildMonthly(calcMonthly(cf,demPct));
+      else if(name==='cashflow')rebuildCashflow(cumArr);
+      else if(name==='breakdown')rebuildBreakdown(yr1Energy,yr1Demand);
+    }
+    window.showTab=showTab;
+
+    ['sCF','sEsc','sDR','sDem'].forEach(id=>{
+      const el=document.getElementById(id);
+      const out=document.getElementById('v'+id.slice(1));
+      el.addEventListener('input',()=>{out.textContent=el.value+'%';update();});
+    });
+
+    setTimeout(()=>{update();rebuildMonthly(calcMonthly(0.19,0.15));},150);
+  </script>
+</body>
+</html>
