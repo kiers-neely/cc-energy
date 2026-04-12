@@ -1,0 +1,10 @@
+title: Project MOVE
+description: Viasat Building N1 Utility & Solar Analysis · CCE Carport Team
+baseurl: ""
+url: ""
+
+# Build
+markdown: kramdown
+exclude:
+  - README.md
+  - "*.sh"

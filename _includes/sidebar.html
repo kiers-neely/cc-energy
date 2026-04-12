@@ -1,0 +1,42 @@
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-brand-title">Project MOVE</div>
+    <div class="sidebar-brand-sub">
+      CCE Feasibility Study<br>Building N1
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Analysis</div>
+
+    <a class="nav-link{% if page.url == '/' or page.url == '/index.html' %} active{% endif %}"
+       href="{{ '/' | relative_url }}">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="1" y="8" width="3" height="7" rx=".5"/>
+        <rect x="6" y="5" width="3" height="10" rx=".5"/>
+        <rect x="11" y="2" width="3" height="13" rx=".5"/>
+      </svg>
+      Utility Dashboard
+    </a>
+
+    <a class="nav-link{% if page.url == '/solar-savings.html' %} active{% endif %}"
+       href="{{ '/solar-savings.html' | relative_url }}">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="8" cy="8" r="3"/>
+        <line x1="8" y1="1" x2="8" y2="3"/>
+        <line x1="8" y1="13" x2="8" y2="15"/>
+        <line x1="1" y1="8" x2="3" y2="8"/>
+        <line x1="13" y1="8" x2="15" y2="8"/>
+        <line x1="3" y1="3" x2="4.5" y2="4.5"/>
+        <line x1="11.5" y1="11.5" x2="13" y2="13"/>
+        <line x1="13" y1="3" x2="11.5" y2="4.5"/>
+        <line x1="4.5" y1="11.5" x2="3" y2="13"/>
+      </svg>
+      Solar Savings Model
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    SDG&E · AL-TOU2-Commercial
+  </div>
+</aside>
