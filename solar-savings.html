@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Solar Savings Model
-subtitle: "10× Mechatron M18KD-20 dual-axis tracker · 720× 595W panels · 428.4 kW DC · ITC 50%"
+subtitle: "Mechatron M18KD-20 dual-axis trackers · 72× 595W panels each · ITC 50% · CCE Tracker Production Simulation"
 ---
 
 <div class="kpi-grid">
@@ -29,9 +29,21 @@ subtitle: "10× Mechatron M18KD-20 dual-axis tracker · 720× 595W panels · 428
 
 <div class="sec">Adjust assumptions</div>
 <div style="background:var(--bg-secondary);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:1rem">
-  <div style="font-size:12px;color:var(--text-secondary);margin-bottom:.75rem;padding:.6rem .75rem;background:var(--bg-info);border-radius:var(--radius);color:var(--text-info)">
-    Production figures from CCE tracker simulation · 1-tracker hourly AC output · 27.74% capacity factor · 1,040,595 kWh/yr usable at 10 trackers
+
+  <div class="slider-row" style="margin-bottom:1rem">
+    <label style="font-size:13px;font-weight:500;color:var(--text-primary);min-width:180px">Number of trackers</label>
+    <input type="range" id="sTrackers" min="1" max="50" step="1" value="10">
+    <span id="vTrackers" style="font-size:16px;font-weight:500;color:var(--text-primary);min-width:52px;text-align:right">10</span>
   </div>
+
+  <div id="curtailmentWarning" style="display:none;font-size:12px;padding:.5rem .75rem;border-radius:var(--radius);background:var(--bg-warning);color:#856404;margin-bottom:.75rem">
+    ⚠ Above ~12 trackers self-consumption drops below 100% — curtailed energy earns no savings. Production figures already account for this using real Green Button load data.
+  </div>
+
+  <div style="font-size:12px;margin-bottom:.75rem;padding:.6rem .75rem;background:var(--bg-info);border-radius:var(--radius);color:var(--text-info)" id="prodNote">
+    Production from CCE tracker production simulation · exact curtailment modeled from Green Button load data
+  </div>
+
   <div class="slider-row">
     <label>Utility escalation (%/yr)</label>
     <input type="range" id="sEsc" min="1" max="8" step="1" value="3">
@@ -85,21 +97,21 @@ subtitle: "10× Mechatron M18KD-20 dual-axis tracker · 720× 595W panels · 428
   </div>
 </div>
 
-<div class="sec">Key assumptions</div>
+<div class="sec">System assumptions</div>
 <div class="assm-grid">
   <div class="assm">
     <p class="assm-label">Gross system cost</p>
-    <p class="assm-val">$1,614,424</p>
-    <p class="assm-sub">$3.77/W DC installed</p>
+    <p class="assm-val" id="aGross">—</p>
+    <p class="assm-sub" id="aWatt">scales at $3.77/W DC</p>
   </div>
   <div class="assm">
     <p class="assm-label">ITC credit (50%)</p>
-    <p class="assm-val">−$807,212</p>
+    <p class="assm-val" id="aITC">—</p>
     <p class="assm-sub">30% base + 10% DC + 10% energy community</p>
   </div>
   <div class="assm">
     <p class="assm-label">Net cost after ITC</p>
-    <p class="assm-val">$807,212</p>
+    <p class="assm-val" id="aNet">—</p>
     <p class="assm-sub">effective capital outlay</p>
   </div>
   <div class="assm">
@@ -108,99 +120,126 @@ subtitle: "10× Mechatron M18KD-20 dual-axis tracker · 720× 595W panels · 428
     <p class="assm-sub">gen + ancillary · PCIA/Wildfire excluded</p>
   </div>
   <div class="assm">
-    <p class="assm-label">Annual production</p>
-    <p class="assm-val">1,040,595 kWh</p>
-    <p class="assm-sub">Helioscope TMY · 27.74% CF · ~100% self-consumed</p>
+    <p class="assm-label">Annual usable production</p>
+    <p class="assm-val" id="aProd">—</p>
+    <p class="assm-sub" id="aSC">Helioscope TMY · real curtailment</p>
   </div>
   <div class="assm">
     <p class="assm-label">Annual O&amp;M estimate</p>
-    <p class="assm-val">$8,000/yr</p>
-    <p class="assm-sub">~$0.011/W · tracker maintenance</p>
+    <p class="assm-val" id="aOM">—</p>
+    <p class="assm-sub">$800/tracker/yr · tracker maintenance</p>
   </div>
 </div>
 
 <div class="note">
-  Demand savings modeled conservatively as a % reduction on SDG&amp;E TOU demand charge ($46.18/kW current rate) — actual savings depend on whether solar production coincides with the monthly peak demand interval. Energy savings exclude PCIA (0.518¢/kWh) and Wildfire Fund (0.561¢/kWh) as non-bypassable charges. Production figures derived directly from Helioscope TMY hourly AC output simulation for 1 tracker, scaled to 10 trackers — self-consumption is ~100% at this system size (only 466 kWh curtailed annually per GB load data). Panel degradation 0.5%/yr applied to savings over 25-year horizon. ITC 50% rate assumes domestic content and energy community adders qualify; verify with tax counsel before Safe Harbor commitment.
+  Tracker spec: Mechatron M18KD-20 dual-axis · 72× 595W panels · 42.84 kW DC each. Cost scaled at $3.77/W DC from 10-tracker baseline of $1,614,424. Production uses exact per-tracker-count curtailment derived from CCE simulated tracker hourly AC output vs Green Button 15-min interval data — self-consumption is ~100% up to 12 trackers, then decreases as midday over-generation grows. Demand savings modeled as % of SDG&amp;E TOU demand charge ($46.18/kW); actual value depends on coincidence of solar peak with monthly demand interval. Energy savings exclude PCIA (0.518¢/kWh) and Wildfire Fund (0.561¢/kWh). Panel degradation 0.5%/yr. ITC 50% assumes domestic content + energy community adders qualify; verify with tax counsel before Safe Harbor commitment.
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-  const SYS_KW=428.4,GROSS_COST=1614424,NET_COST=GROSS_COST*0.5,OM_ANNUAL=8000,DEGRAD=0.005;
-  const CE_RATE=0.1136,ANNUAL_KWH=4180000,ANNUAL_BILL=1000000,DEMAND_CHARGE_ANNUAL=245000;
+  const TRACKER_KW=42.84,COST_PER_W=3.77,ITC=0.50,DEGRAD=0.005;
+  const CE_RATE=0.1136,ANNUAL_KWH=4180000,ANNUAL_BILL=1000000,DEMAND_CHARGE_ANNUAL=245000,OM_PER_TRACKER=800;
   const MONTH_LABELS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  // Real monthly usable kWh at 10 trackers — from CCE tracker simulation vs Green Button load
-  // Self-consumption ~100% at 10 trackers (only 466 kWh curtailed annually)
-  const MONTHLY_USABLE_10=[74845,69554,86889,91436,96017,96870,109832,101301,85159,86142,72549,70000];
-  // Per-tracker annual usable kWh (linear scaling valid up to ~12 trackers before curtailment)
-  const ANNUAL_USABLE_1=104106;
+  const ANNUAL_USABLE=[104106,208212,312318,416424,520531,624637,728743,832849,936955,1040595,1137300,1217415,1275282,1317531,1352675,1383811,1411934,1437762,1461664,1483987,1505028,1525000,1543853,1561213,1576412,1588793,1599038,1608013,1616177,1623747,1630793,1637346,1643466,1649197,1654706,1659996,1665108,1670004,1674708,1679174,1683476,1687577,1691536,1695349,1699010,1702541,1705912,1709201,1712330,1715329];
 
+  const MONTHLY_ALL=[[7491,6957,8699,9148,9602,9687,10983,10130,8516,8618,7256,7018],[14983,13915,17398,18297,19203,19374,21966,20260,17032,17237,14512,14035],[22474,20872,26098,27445,28805,29061,32950,30390,25548,25855,21768,21053],[29965,27830,34797,36594,38407,38748,43933,40521,34064,34473,29023,28070],[37457,34787,43496,45742,48009,48435,54916,50651,42580,43091,36279,35088],[44948,41745,52195,54891,57610,58122,65899,60781,51096,51710,43535,42105],[52439,48702,60895,64039,67212,67809,76883,70911,59611,60328,50791,49123],[59930,55660,69594,73187,76814,77496,87866,81041,68127,68946,58047,56140],[67422,62617,78293,82336,86416,87183,98849,91171,76643,77565,65303,63158],[74845,69554,86889,91436,96017,96870,109832,101301,85159,86142,72549,70000],[81276,75587,94585,99365,105453,106370,120816,111369,93479,94096,79420,75484],[85643,79644,100493,105827,113224,115130,131675,120547,100669,100458,84787,79317],[88344,82440,104476,109525,118587,122372,141773,127499,105711,104305,88186,82064],[90359,84761,107552,112188,122574,128278,150185,131157,108803,106705,90783,84187],[92046,86568,109967,114511,125739,133928,157983,133563,111025,108547,92800,85999],[93595,88066,111869,116581,128414,139391,165612,135500,112897,110144,94194,87550],[95000,89267,113540,118364,130784,144610,172985,137198,114471,111616,95167,88933],[96285,90168,115119,119968,132756,149732,180178,138662,115792,112972,96016,90115],[97476,90927,116600,121327,134367,154772,187276,139878,116901,114197,96813,91130],[98459,91575,117973,122482,135818,159770,194323,140984,117798,115318,97560,91927],[99303,92167,119247,123491,137144,164696,201335,141849,118582,116289,98293,92634],[100029,92696,120391,124363,138345,169575,208321,142530,119305,117181,98984,93281],[100625,93145,121447,125101,139449,174348,215081,143151,120010,117973,99620,93902],[101166,93570,122413,125761,140470,178817,221231,143714,120684,118692,100235,94459],[101671,93996,123294,126366,141430,182642,226322,144244,121349,119335,100800,94965],[102103,94404,124094,126945,142293,185404,230185,144756,121996,119863,101329,95420],[102524,94786,124783,127500,143088,187370,233217,145218,122591,120291,101838,95834],[102886,95138,125417,128027,143810,189109,235579,145645,123145,120677,102335,96245],[103202,95473,126018,128516,144474,190678,237643,146024,123675,121029,102819,96627],[103517,95765,126570,128986,145080,192144,239475,146380,124204,121357,103283,96986],[103833,96019,127095,129441,145675,193536,241041,146727,124705,121673,103706,97343],[104143,96266,127571,129886,146221,194875,242385,147057,125169,121977,104108,97690],[104439,96500,127978,130328,146749,196150,243537,147366,125597,122280,104511,98031],[104721,96724,128346,130749,147259,197336,244625,147651,125981,122551,104901,98354],[104998,96940,128696,131168,147724,198473,245686,147935,126338,122794,105280,98673],[105259,97157,129038,131572,148166,199541,246717,148219,126695,123008,105649,98976],[105503,97374,129370,131961,148601,200564,247696,148502,127036,123212,106011,99277],[105742,97591,129695,132345,149023,201536,248596,148778,127361,123408,106363,99565],[105968,97800,130016,132729,149414,202473,249448,149033,127683,123595,106712,99839],[106176,98007,130336,133112,149790,203380,250226,149275,127988,123760,107052,100072],[106371,98213,130653,133496,150147,204248,250974,149508,128283,123922,107386,100276],[106551,98410,130961,133867,150480,205066,251673,149738,128571,124076,107704,100479],[106719,98606,131259,134230,150805,205842,252353,149962,128840,124223,108015,100681],[106879,98794,131546,134582,151115,206604,252995,150183,129097,124359,108326,100868],[107034,98976,131807,134918,151380,207348,253618,150403,129349,124486,108637,101053],[107177,99150,132047,135226,151615,208082,254240,150624,129582,124613,108947,101239],[107308,99315,132262,135517,151831,208762,254862,150838,129813,124735,109243,101424],[107431,99476,132468,135803,152043,209419,255482,151038,130044,124851,109537,101609],[107546,99634,132673,136077,152249,210011,256078,151229,130259,124957,109829,101787],[107662,99786,132876,136349,152448,210529,256670,151412,130474,125051,110107,101965]];
+
+  let numTrackers=10;
   const gc='rgba(0,0,0,.06)',lc='#888',tf={size:11};
   const baseOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:lc,font:tf,autoSkip:false,maxRotation:45},grid:{color:gc}},y:{ticks:{color:lc,font:tf},grid:{color:gc}}}};
   const charts={};
   function mkChart(id,cfg){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg);}
-  function getParams(){return{esc:+document.getElementById('sEsc').value/100,dr:+document.getElementById('sDR').value/100,demPct:+document.getElementById('sDem').value/100};}
+  function getParams(){return{n:numTrackers,esc:+document.getElementById('sEsc').value/100,dr:+document.getElementById('sDR').value/100,demPct:+document.getElementById('sDem').value/100};}
+  function sysCost(n){return Math.round(n*TRACKER_KW*1000*COST_PER_W);}
+  function netCost(n){return Math.round(sysCost(n)*(1-ITC));}
+  function scPct(n){return(ANNUAL_USABLE[n-1]/(104106*n)*100).toFixed(1);}
 
-  function calcMonthly(demPct){
-    return MONTHLY_USABLE_10.map((usable,i)=>{
-      const energySavings=usable*CE_RATE;
-      const demSavings=(DEMAND_CHARGE_ANNUAL/12)*demPct;
-      return{usable,energySavings,demSavings,total:energySavings+demSavings};
-    });
+  function calcMonthly(n,demPct){
+    return MONTHLY_ALL[n-1].map(usable=>({
+      usable,
+      energySavings:usable*CE_RATE,
+      demSavings:(DEMAND_CHARGE_ANNUAL/12)*demPct
+    }));
   }
 
-  function calc25yr(esc,dr,demPct){
-    const monthly=calcMonthly(demPct);
+  function calc25yr(n,esc,dr,demPct){
+    const monthly=calcMonthly(n,demPct);
     const yr1Energy=monthly.reduce((s,m)=>s+m.energySavings,0);
     const yr1Demand=monthly.reduce((s,m)=>s+m.demSavings,0);
     const yr1Total=yr1Energy+yr1Demand;
-    let cumCF=-NET_COST,npv=-NET_COST;
-    const cumArr=[];
-    let payback=null;
+    const nc=netCost(n), om=n*OM_PER_TRACKER;
+    let cumCF=-nc,npv=-nc; const cumArr=[]; let payback=null;
     for(let y=1;y<=25;y++){
-      const savings=yr1Total*Math.pow(1-DEGRAD,y-1)*Math.pow(1+esc,y-1)-OM_ANNUAL;
-      cumCF+=savings; npv+=savings/Math.pow(1+dr,y);
+      const sav=yr1Total*Math.pow(1-DEGRAD,y-1)*Math.pow(1+esc,y-1)-om;
+      cumCF+=sav; npv+=sav/Math.pow(1+dr,y);
       cumArr.push(Math.round(cumCF));
       if(payback===null&&cumCF>=0)payback=y;
     }
-    const annualProd=MONTHLY_USABLE_10.reduce((a,b)=>a+b,0);
-    return{yr1Total,yr1Energy,yr1Demand,cumArr,npv,payback,annualProd};
+    return{yr1Total,yr1Energy,yr1Demand,cumArr,npv,payback,annualProd:ANNUAL_USABLE[n-1]};
   }
+
   function update(){
-    const{esc,dr,demPct}=getParams();
-    const{yr1Total,yr1Energy,yr1Demand,cumArr,npv,payback,annualProd}=calc25yr(esc,dr,demPct);
+    const{n,esc,dr,demPct}=getParams();
+    const{yr1Total,yr1Energy,yr1Demand,cumArr,npv,payback,annualProd}=calc25yr(n,esc,dr,demPct);
+    const gross=sysCost(n), nc=netCost(n), sc=scPct(n);
     const offsetPct=Math.min(annualProd/ANNUAL_KWH*100,100);
+
     document.getElementById('kYr1').textContent='$'+Math.round(yr1Total).toLocaleString();
     document.getElementById('kPB').textContent=payback?payback+' yrs':'>25 yrs';
     document.getElementById('kNPV').textContent=(npv>=0?'$':'-$')+Math.abs(Math.round(npv)).toLocaleString();
     document.getElementById('kNPVsub').textContent='at '+Math.round(dr*100)+'% discount rate';
     document.getElementById('kProd').textContent=Math.round(annualProd/1000)+'k kWh/yr';
     document.getElementById('kOffset').textContent=offsetPct.toFixed(1)+'% of N1 usage offset';
-    const activeTab=document.querySelector('.tab.on-green');
-    if(activeTab){
-      const name=activeTab.textContent.trim();
-      if(name.includes('Monthly'))rebuildMonthly(calcMonthly(demPct));
-      else if(name.includes('cash'))rebuildCashflow(cumArr);
-      else if(name.includes('breakdown'))rebuildBreakdown(yr1Energy,yr1Demand);
+
+    document.getElementById('aGross').textContent='$'+gross.toLocaleString();
+    document.getElementById('aWatt').textContent=n+' tracker'+(n===1?'':'s')+' · '+(n*TRACKER_KW).toFixed(1)+' kW DC · $3.77/W';
+    document.getElementById('aITC').textContent='−$'+(gross*ITC).toLocaleString(undefined,{maximumFractionDigits:0});
+    document.getElementById('aNet').textContent='$'+nc.toLocaleString();
+    document.getElementById('aProd').textContent=Math.round(annualProd/1000)+'k kWh/yr';
+    document.getElementById('aSC').textContent=sc+'% self-consumed · Helioscope TMY';
+    document.getElementById('aOM').textContent='$'+(n*OM_PER_TRACKER).toLocaleString()+'/yr';
+
+    document.getElementById('curtailmentWarning').style.display=n>12?'block':'none';
+    document.getElementById('prodNote').textContent=
+      n+' tracker'+(n===1?'':'s')+' · '+(n*TRACKER_KW).toFixed(1)+' kW DC · '+
+      Math.round(annualProd/1000)+'k kWh/yr usable · '+sc+'% self-consumption';
+
+    const tab=document.querySelector('.tab.on-green');
+    if(tab){
+      const nm=tab.textContent.trim();
+      if(nm.includes('Monthly'))rebuildMonthly(calcMonthly(n,demPct));
+      else if(nm.includes('cash'))rebuildCashflow(cumArr);
+      else rebuildBreakdown(yr1Energy,yr1Demand);
     }
   }
+
   function rebuildMonthly(monthly){mkChart('cMonthly',{type:'bar',data:{labels:MONTH_LABELS,datasets:[{label:'Energy savings',data:monthly.map(m=>Math.round(m.energySavings)),backgroundColor:'#639922',stack:'s'},{label:'Demand savings',data:monthly.map(m=>Math.round(m.demSavings)),backgroundColor:'#1D9E75',stack:'s'}]},options:{...baseOpts,scales:{...baseOpts.scales,x:{...baseOpts.scales.x,stacked:true},y:{...baseOpts.scales.y,stacked:true,ticks:{...baseOpts.scales.y.ticks,callback:v=>'$'+(v/1000).toFixed(0)+'k'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': $'+Math.round(c.parsed.y).toLocaleString()}}}}});}
+
   function rebuildCashflow(cumArr){const yrs=Array.from({length:25},(_,i)=>'Yr '+(i+1));mkChart('cCashflow',{type:'line',data:{labels:yrs,datasets:[{label:'Cumulative cash flow',data:cumArr,borderColor:'#534AB7',backgroundColor:'transparent',tension:.3,pointRadius:2,borderWidth:2},{label:'Break-even',data:Array(25).fill(0),borderColor:'#D85A30',backgroundColor:'transparent',borderWidth:1,borderDash:[4,3],pointRadius:0}]},options:{...baseOpts,scales:{...baseOpts.scales,y:{...baseOpts.scales.y,ticks:{...baseOpts.scales.y.ticks,callback:v=>(v<0?'-$':'$')+Math.abs(Math.round(v/1000))+'k'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label==='Cumulative cash flow'?(c.parsed.y<0?'-$':'$')+Math.abs(Math.round(c.parsed.y)).toLocaleString():'$0'}}}}});}
+
   function rebuildBreakdown(yr1Energy,yr1Demand){const annRemain=Math.round(ANNUAL_BILL-yr1Energy-yr1Demand);mkChart('cBreakdown',{type:'bar',data:{labels:['Year 1 bill breakdown'],datasets:[{label:'Remaining bill',data:[annRemain],backgroundColor:'#888780'},{label:'Demand savings',data:[Math.round(yr1Demand)],backgroundColor:'#1D9E75'},{label:'Energy savings',data:[Math.round(yr1Energy)],backgroundColor:'#639922'}]},options:{...baseOpts,scales:{...baseOpts.scales,x:{...baseOpts.scales.x,stacked:true},y:{...baseOpts.scales.y,stacked:true,ticks:{...baseOpts.scales.y.ticks,callback:v=>'$'+(v/1000).toFixed(0)+'k'}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': $'+Math.round(c.parsed.y).toLocaleString()}}}}});}
+
   function showTab(name,btn){
     ['monthly','cashflow','breakdown'].forEach(n=>{document.getElementById('pnl-'+n).style.display=n===name?'block':'none';});
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on-green'));
     if(btn)btn.classList.add('on-green');
-    const{esc,dr,demPct}=getParams();
-    const{yr1Energy,yr1Demand,cumArr}=calc25yr(esc,dr,demPct);
-    if(name==='monthly')rebuildMonthly(calcMonthly(demPct));
+    const{n,esc,dr,demPct}=getParams();
+    const{yr1Energy,yr1Demand,cumArr}=calc25yr(n,esc,dr,demPct);
+    if(name==='monthly')rebuildMonthly(calcMonthly(n,demPct));
     else if(name==='cashflow')rebuildCashflow(cumArr);
     else rebuildBreakdown(yr1Energy,yr1Demand);
   }
   window.showTab=showTab;
+
+  document.getElementById('sTrackers').addEventListener('input',function(){
+    numTrackers=parseInt(this.value);
+    document.getElementById('vTrackers').textContent=numTrackers;
+    update();
+  });
   ['sEsc','sDR','sDem'].forEach(id=>{
     const el=document.getElementById(id),out=document.getElementById('v'+id.slice(1));
     el.addEventListener('input',()=>{out.textContent=el.value+'%';update();});
   });
-  setTimeout(()=>{update();rebuildMonthly(calcMonthly(0.15));},150);
+  setTimeout(()=>{update();rebuildMonthly(calcMonthly(numTrackers,0.15));},150);
 </script>
