@@ -29,10 +29,8 @@ subtitle: "10× Mechatron M18KD-20 dual-axis tracker · 720× 595W panels · 428
 
 <div class="sec">Adjust assumptions</div>
 <div style="background:var(--bg-secondary);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:1rem">
-  <div class="slider-row">
-    <label>Capacity factor (%)</label>
-    <input type="range" id="sCF" min="14" max="24" step="1" value="19">
-    <span id="vCF">19%</span>
+  <div style="font-size:12px;color:var(--text-secondary);margin-bottom:.75rem;padding:.6rem .75rem;background:var(--bg-info);border-radius:var(--radius);color:var(--text-info)">
+    Production figures from CCE tracker simulation · 1-tracker hourly AC output · 27.74% capacity factor · 1,040,595 kWh/yr usable at 10 trackers
   </div>
   <div class="slider-row">
     <label>Utility escalation (%/yr)</label>
@@ -110,9 +108,9 @@ subtitle: "10× Mechatron M18KD-20 dual-axis tracker · 720× 595W panels · 428
     <p class="assm-sub">gen + ancillary · PCIA/Wildfire excluded</p>
   </div>
   <div class="assm">
-    <p class="assm-label">Panel degradation</p>
-    <p class="assm-val">0.5%/yr</p>
-    <p class="assm-sub">typical monocrystalline</p>
+    <p class="assm-label">Annual production</p>
+    <p class="assm-val">1,040,595 kWh</p>
+    <p class="assm-sub">Helioscope TMY · 27.74% CF · ~100% self-consumed</p>
   </div>
   <div class="assm">
     <p class="assm-label">Annual O&amp;M estimate</p>
@@ -122,24 +120,37 @@ subtitle: "10× Mechatron M18KD-20 dual-axis tracker · 720× 595W panels · 428
 </div>
 
 <div class="note">
-  Demand savings modeled conservatively as a % reduction on SDG&amp;E TOU demand charge ($46.18/kW current rate) — actual savings depend on whether solar production coincides with the monthly peak demand interval. Energy savings exclude PCIA (0.518¢/kWh) and Wildfire Fund (0.561¢/kWh) as non-bypassable charges. Production uses dual-axis tracker capacity factor for Carlsbad coastal TMY — refine with Helioscope hourly output for higher precision. ITC 50% rate assumes domestic content and energy community adders qualify; verify with tax counsel before Safe Harbor commitment.
+  Demand savings modeled conservatively as a % reduction on SDG&amp;E TOU demand charge ($46.18/kW current rate) — actual savings depend on whether solar production coincides with the monthly peak demand interval. Energy savings exclude PCIA (0.518¢/kWh) and Wildfire Fund (0.561¢/kWh) as non-bypassable charges. Production figures derived directly from Helioscope TMY hourly AC output simulation for 1 tracker, scaled to 10 trackers — self-consumption is ~100% at this system size (only 466 kWh curtailed annually per GB load data). Panel degradation 0.5%/yr applied to savings over 25-year horizon. ITC 50% rate assumes domestic content and energy community adders qualify; verify with tax counsel before Safe Harbor commitment.
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
   const SYS_KW=428.4,GROSS_COST=1614424,NET_COST=GROSS_COST*0.5,OM_ANNUAL=8000,DEGRAD=0.005;
   const CE_RATE=0.1136,ANNUAL_KWH=4180000,ANNUAL_BILL=1000000,DEMAND_CHARGE_ANNUAL=245000;
-  const MONTH_LABELS=['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May'];
-  const MONTH_KWH=[295168,296395,323224,305404,322003,283083,298713,316766,295715,279082,316369,276281,274080,297954];
-  const CF_MONTHLY=[0.155,0.165,0.195,0.215,0.210,0.200,0.185,0.160,0.140,0.130,0.145,0.160,0.155,0.165];
+  const MONTH_LABELS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // Real monthly usable kWh at 10 trackers — from CCE tracker simulation vs Green Button load
+  // Self-consumption ~100% at 10 trackers (only 466 kWh curtailed annually)
+  const MONTHLY_USABLE_10=[74845,69554,86889,91436,96017,96870,109832,101301,85159,86142,72549,70000];
+  // Per-tracker annual usable kWh (linear scaling valid up to ~12 trackers before curtailment)
+  const ANNUAL_USABLE_1=104106;
+
   const gc='rgba(0,0,0,.06)',lc='#888',tf={size:11};
   const baseOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:lc,font:tf,autoSkip:false,maxRotation:45},grid:{color:gc}},y:{ticks:{color:lc,font:tf},grid:{color:gc}}}};
   const charts={};
   function mkChart(id,cfg){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),cfg);}
-  function getParams(){return{cf:+document.getElementById('sCF').value/100,esc:+document.getElementById('sEsc').value/100,dr:+document.getElementById('sDR').value/100,demPct:+document.getElementById('sDem').value/100};}
-  function calcMonthly(cf,demPct){return CF_MONTHLY.map((cfm,i)=>{const scaledCF=cfm*(cf/0.19),prod=SYS_KW*scaledCF*(365/12*24),usable=Math.min(prod,MONTH_KWH[i]),energySavings=usable*CE_RATE,demSavings=(DEMAND_CHARGE_ANNUAL/14)*demPct;return{prod,usable,energySavings,demSavings,total:energySavings+demSavings};});}
-  function calc25yr(cf,esc,dr,demPct){
-    const monthly=calcMonthly(cf,demPct);
+  function getParams(){return{esc:+document.getElementById('sEsc').value/100,dr:+document.getElementById('sDR').value/100,demPct:+document.getElementById('sDem').value/100};}
+
+  function calcMonthly(demPct){
+    return MONTHLY_USABLE_10.map((usable,i)=>{
+      const energySavings=usable*CE_RATE;
+      const demSavings=(DEMAND_CHARGE_ANNUAL/12)*demPct;
+      return{usable,energySavings,demSavings,total:energySavings+demSavings};
+    });
+  }
+
+  function calc25yr(esc,dr,demPct){
+    const monthly=calcMonthly(demPct);
     const yr1Energy=monthly.reduce((s,m)=>s+m.energySavings,0);
     const yr1Demand=monthly.reduce((s,m)=>s+m.demSavings,0);
     const yr1Total=yr1Energy+yr1Demand;
@@ -152,11 +163,12 @@ subtitle: "10× Mechatron M18KD-20 dual-axis tracker · 720× 595W panels · 428
       cumArr.push(Math.round(cumCF));
       if(payback===null&&cumCF>=0)payback=y;
     }
-    return{yr1Total,yr1Energy,yr1Demand,cumArr,npv,payback,annualProd:monthly.reduce((s,m)=>s+m.prod,0)};
+    const annualProd=MONTHLY_USABLE_10.reduce((a,b)=>a+b,0);
+    return{yr1Total,yr1Energy,yr1Demand,cumArr,npv,payback,annualProd};
   }
   function update(){
-    const{cf,esc,dr,demPct}=getParams();
-    const{yr1Total,yr1Energy,yr1Demand,cumArr,npv,payback,annualProd}=calc25yr(cf,esc,dr,demPct);
+    const{esc,dr,demPct}=getParams();
+    const{yr1Total,yr1Energy,yr1Demand,cumArr,npv,payback,annualProd}=calc25yr(esc,dr,demPct);
     const offsetPct=Math.min(annualProd/ANNUAL_KWH*100,100);
     document.getElementById('kYr1').textContent='$'+Math.round(yr1Total).toLocaleString();
     document.getElementById('kPB').textContent=payback?payback+' yrs':'>25 yrs';
@@ -167,7 +179,7 @@ subtitle: "10× Mechatron M18KD-20 dual-axis tracker · 720× 595W panels · 428
     const activeTab=document.querySelector('.tab.on-green');
     if(activeTab){
       const name=activeTab.textContent.trim();
-      if(name.includes('Monthly'))rebuildMonthly(calcMonthly(cf,demPct));
+      if(name.includes('Monthly'))rebuildMonthly(calcMonthly(demPct));
       else if(name.includes('cash'))rebuildCashflow(cumArr);
       else if(name.includes('breakdown'))rebuildBreakdown(yr1Energy,yr1Demand);
     }
@@ -179,16 +191,16 @@ subtitle: "10× Mechatron M18KD-20 dual-axis tracker · 720× 595W panels · 428
     ['monthly','cashflow','breakdown'].forEach(n=>{document.getElementById('pnl-'+n).style.display=n===name?'block':'none';});
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on-green'));
     if(btn)btn.classList.add('on-green');
-    const{cf,esc,dr,demPct}=getParams();
-    const{yr1Energy,yr1Demand,cumArr}=calc25yr(cf,esc,dr,demPct);
-    if(name==='monthly')rebuildMonthly(calcMonthly(cf,demPct));
+    const{esc,dr,demPct}=getParams();
+    const{yr1Energy,yr1Demand,cumArr}=calc25yr(esc,dr,demPct);
+    if(name==='monthly')rebuildMonthly(calcMonthly(demPct));
     else if(name==='cashflow')rebuildCashflow(cumArr);
     else rebuildBreakdown(yr1Energy,yr1Demand);
   }
   window.showTab=showTab;
-  ['sCF','sEsc','sDR','sDem'].forEach(id=>{
+  ['sEsc','sDR','sDem'].forEach(id=>{
     const el=document.getElementById(id),out=document.getElementById('v'+id.slice(1));
     el.addEventListener('input',()=>{out.textContent=el.value+'%';update();});
   });
-  setTimeout(()=>{update();rebuildMonthly(calcMonthly(0.19,0.15));},150);
+  setTimeout(()=>{update();rebuildMonthly(calcMonthly(0.15));},150);
 </script>

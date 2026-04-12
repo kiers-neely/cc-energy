@@ -55,11 +55,12 @@ subtitle: "Average daily load profile by month · Adjust trackers to see solar o
 </div>
 
 <div class="note">
-  Solar production scaled linearly from 1-tracker CCE Tools simulation (hourly AC output). Load profile derived from Green Button 15-minute interval data averaged by month. Net load = building demand minus solar; values below zero indicate over-generation (potential export). Tracker spec: Mechatron M18KD-20 dual-axis, 72× 595W panels per tracker (~42.8 kW DC each).
+  Solar production scaled linearly from 1-tracker Helioscope TMY simulation (hourly AC output). Load profile derived from Green Button 15-minute interval data averaged by month. Net load = building demand minus solar; values below zero indicate over-generation (potential export). Tracker spec: Mechatron M18KD-20 dual-axis, 72× 595W panels per tracker (~42.8 kW DC each).
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
+Chart.register(Chart.Filler);
 const TRACKER_KW = 42.84;
 const ANNUAL_LOAD_KWH = 4180000;
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -124,10 +125,70 @@ function buildProfileChart(m, n) {
   const solar = getSolar(m, n);
   const net = getNetLoad(m, n);
 
-  // Offset area = portion of load covered by solar (min of solar, load) per hour
-  const offset = solar.map((v,i) => Math.min(v, load[i]));
-  // Export = max(0, solar - load)
-  const exportArr = solar.map((v,i) => Math.max(0, v - load[i]));
+  const allVals = [...load, ...net, ...solar];
+  const yMin = Math.min(...allVals) - 20;
+  const yMax = Math.max(...allVals) + 20;
+
+  // Custom plugin: draws smooth filled zones between curves using canvas paths
+  const shadingPlugin = {
+    id: 'smoothShading',
+    afterDraw(chart) {
+      const ctx = chart.ctx;
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+
+      // Helper: get pixel coords for a data point
+      function px(i, val) {
+        return {
+          x: xScale.getPixelForValue(i),
+          y: yScale.getPixelForValue(val)
+        };
+      }
+
+      // Draw a smooth filled region between two data arrays using bezier curves
+      function drawBand(topArr, botArr, color) {
+        ctx.save();
+        ctx.beginPath();
+        // Forward pass along top curve
+        const t0 = px(0, topArr[0]);
+        ctx.moveTo(t0.x, t0.y);
+        for (let i = 1; i < topArr.length; i++) {
+          const prev = px(i-1, topArr[i-1]);
+          const curr = px(i, topArr[i]);
+          const cpx = (prev.x + curr.x) / 2;
+          ctx.bezierCurveTo(cpx, prev.y, cpx, curr.y, curr.x, curr.y);
+        }
+        // Reverse pass along bottom curve
+        for (let i = botArr.length - 1; i >= 0; i--) {
+          const next = px(Math.max(0, i-1), botArr[Math.max(0,i-1)]);
+          const curr = px(i, botArr[i]);
+          const cpx = (curr.x + next.x) / 2;
+          ctx.bezierCurveTo(cpx, curr.y, cpx, next.y, next.x, next.y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Zone 1 (coral): between zero and net load (where net > 0)
+      const netAbove = net.map(v => Math.max(0, v));
+      const zero = net.map(() => 0);
+      drawBand(netAbove, zero, 'rgba(216,90,48,0.18)');
+
+      // Zone 2 (teal): solar offset = between net load and gross demand (where solar > 0)
+      // top = gross demand clipped to where solar produces, bottom = net load clipped to >= 0
+      const solarTop = load.map((v, i) => solar[i] > 0 ? v : net[i]);
+      const solarBot = net.map((v, i) => solar[i] > 0 ? Math.max(0, v) : v);
+      drawBand(solarTop, solarBot, 'rgba(29,158,117,0.20)');
+
+      // Zone 3 (grey): export = below zero on net load
+      const exportTop = zero;
+      const exportBot = net.map(v => Math.min(0, v));
+      const hasExport = exportBot.some(v => v < 0);
+      if (hasExport) drawBand(exportTop, exportBot, 'rgba(160,155,130,0.45)');
+    }
+  };
 
   mkChart('cProfile', {
     type: 'line',
@@ -141,32 +202,30 @@ function buildProfileChart(m, n) {
           borderWidth: 2,
           borderDash: [6,3],
           backgroundColor: 'transparent',
+          fill: false,
           pointRadius: 0,
-          tension: 0.3,
-          order: 1
+          tension: 0.4
         },
         {
           label: 'Net load (grid)',
           data: net,
           borderColor: '#D85A30',
           borderWidth: 2,
-          backgroundColor: 'rgba(216,90,48,0.12)',
-          fill: true,
+          backgroundColor: 'transparent',
+          fill: false,
           pointRadius: 0,
-          tension: 0.3,
-          order: 2
+          tension: 0.4
         },
         {
           label: 'Solar production',
           data: solar,
           borderColor: '#1D9E75',
-          borderWidth: 2,
-          backgroundColor: 'rgba(29,158,117,0.15)',
-          fill: true,
+          borderWidth: 2.5,
+          backgroundColor: 'transparent',
+          fill: false,
           pointRadius: 0,
-          tension: 0.3,
-          order: 3
-        },
+          tension: 0.4
+        }
       ]
     },
     options: {
@@ -177,22 +236,22 @@ function buildProfileChart(m, n) {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: c => {
-              const v = c.parsed.y;
-              return c.dataset.label + ': ' + (v < 0 ? '' : '') + v.toFixed(1) + ' kW';
-            }
+            label: c => c.dataset.label + ': ' + c.parsed.y.toFixed(1) + ' kW'
           }
         }
       },
       scales: {
         x: { ticks: { color: lc, font: tf, autoSkip: true, maxTicksLimit: 12 }, grid: { color: gc } },
         y: {
+          min: yMin,
+          max: yMax,
           ticks: { color: lc, font: tf, callback: v => v + ' kW' },
           grid: { color: gc },
           title: { display: true, text: 'kW (hourly average)', color: lc, font: { size: 11 } }
         }
       }
-    }
+    },
+    plugins: [shadingPlugin]
   });
 }
 
