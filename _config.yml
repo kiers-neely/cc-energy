@@ -2,6 +2,7 @@ title: Project MOVE
 description: CCE Feasibility Study — Building N1
 baseurl: "/cc-energy"
 url: "https://kiers-neely.github.io"
+permalink: pretty
 
 markdown: kramdown
 exclude:
