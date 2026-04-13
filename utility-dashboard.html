@@ -36,6 +36,12 @@ subtitle: "AL-TOU2-Commercial · CE + SDG&E · 14 billing periods Apr 2024 to Ju
   <button class="tab" onclick="show('rate',this)">Blended ¢/kWh</button>
 </div>
 
+<div style="text-align:right;margin-bottom:1rem">
+  <button id="btnDownloadChart" class="tab" style="background:#185FA5;color:#fff;border-color:#185FA5;font-size:12px;padding:6px 12px">
+    Download total bill (PNG) ↓
+  </button>
+</div>
+
 <div id="pnl-cost">
   <div style="position:relative;width:100%;height:260px">
     <canvas id="cCost" role="img" aria-label="Monthly total combined bill Apr 2024 to Jun 2025">Monthly combined bills: peak Aug 2024 at $82K, low Mar 2025 at $64K.</canvas>
@@ -125,12 +131,101 @@ subtitle: "AL-TOU2-Commercial · CE + SDG&E · 14 billing periods Apr 2024 to Ju
   function initRate(){mkChart('cRate',{type:'line',data:{labels,datasets:[{label:'Blended ¢/kWh',data:rate,borderColor:'#534AB7',backgroundColor:'transparent',tension:.3,pointRadius:4,borderWidth:2,pointStyle:'circle'}]},options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(2)+'¢/kWh'}}},scales:{...base.scales,y:{...base.scales.y,min:20,max:28,ticks:{...base.scales.y.ticks,callback:v=>v+'¢'}}}}});}
   const inits={cost:initCost,split:initSplit,usage:initUsage,demand:initDemand,rate:initRate};
   const inited={};
+
+  // Download function for individual charts
+  function downloadChart(canvasId, title, legendItems) {
+    const canvas = document.getElementById(canvasId);
+    
+    // 1. Setup a temporary canvas with extra height for title and legend
+    const tempCanvas = document.createElement('canvas');
+    const padding = 60; // Space for Title
+    const legendSpace = 40; // Space for Legend at bottom
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height + padding + legendSpace;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    // 2. Background
+    tempCtx.fillStyle = '#FFFFFF';
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+    // 3. Draw Title
+    tempCtx.fillStyle = '#185FA5';
+    tempCtx.font = 'bold 18px sans-serif';
+    tempCtx.fillText(title, 20, 30);
+
+    // 4. Draw the Chart itself
+    tempCtx.drawImage(canvas, 0, padding);
+
+    // 5. Draw Legend
+    const legendY = tempCanvas.height - 25;
+    tempCtx.font = '11px sans-serif';
+    
+    function drawLegendItem(label, color, x, isDashed = false) {
+      tempCtx.fillStyle = color;
+      if (isDashed) {
+        tempCtx.setLineDash([3, 2]);
+        tempCtx.strokeStyle = color;
+        tempCtx.strokeRect(x, legendY - 8, 12, 12);
+        tempCtx.setLineDash([]);
+      } else {
+        tempCtx.fillRect(x, legendY - 8, 12, 12);
+      }
+      tempCtx.fillStyle = '#333';
+      tempCtx.fillText(label, x + 18, legendY + 2);
+      return x + tempCtx.measureText(label).width + 40;
+    }
+
+    let nextX = 20;
+    legendItems.forEach(item => {
+      nextX = drawLegendItem(item.label, item.color, nextX, item.dashed);
+    });
+
+    // 6. Final Export
+    const link = document.createElement('a');
+    link.download = `Utility-Dashboard-${title.replace(/\s+/g, '-')}.png`;
+    link.href = tempCanvas.toDataURL('image/png');
+    link.click();
+  }
+
   function show(name,btn){
     ['cost','split','usage','demand','rate'].forEach(n=>{document.getElementById('pnl-'+n).style.display=n===name?'block':'none';});
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on-blue'));
     if(btn)btn.classList.add('on-blue');
     if(!inited[name]){inits[name]();inited[name]=true;}
+
+    // Update download button
+    const downloadBtn = document.getElementById('btnDownloadChart');
+    if(name === 'cost'){
+      downloadBtn.textContent = 'Download total bill (PNG) ↓';
+      downloadBtn.onclick = () => downloadChart('cCost', 'Total Bill ($)', [
+        {label: 'Total bill', color: '#534AB7'}
+      ]);
+    } else if(name === 'split'){
+      downloadBtn.textContent = 'Download CE vs SDG&E split (PNG) ↓';
+      downloadBtn.onclick = () => downloadChart('cSplit', 'CE vs SDG&E Cost Split', [
+        {label: 'SDG&E delivery', color: '#185FA5'},
+        {label: 'CE generation', color: '#534AB7'}
+      ]);
+    } else if(name === 'usage'){
+      downloadBtn.textContent = 'Download kWh by TOU period (PNG) ↓';
+      downloadBtn.onclick = () => downloadChart('cUsage', 'kWh by TOU Period', [
+        {label: 'On-peak', color: '#185FA5'},
+        {label: 'Off-peak', color: '#73726c'},
+        {label: 'Super off-peak', color: '#B5D4F4'}
+      ]);
+    } else if(name === 'demand'){
+      downloadBtn.textContent = 'Download demand (PNG) ↓';
+      downloadBtn.onclick = () => downloadChart('cDemand', 'Monthly Peak Demand', [
+        {label: 'Max monthly demand', color: '#D85A30'},
+        {label: 'CE billed demand', color: '#0F6E56', dashed: true}
+      ]);
+    } else if(name === 'rate'){
+      downloadBtn.textContent = 'Download blended ¢/kWh (PNG) ↓';
+      downloadBtn.onclick = () => downloadChart('cRate', 'Blended ¢/kWh', [
+        {label: 'Blended all-in ¢/kWh', color: '#534AB7'}
+      ]);
+    }
   }
   window.show=show;
-  setTimeout(()=>{inits.cost();inited.cost=true;},120);
+  setTimeout(()=>{show('cost');},120);
 </script>
