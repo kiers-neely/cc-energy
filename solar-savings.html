@@ -68,6 +68,12 @@ subtitle: "Mechatron M18KD-20 dual-axis trackers · 72× 595W panels each · CCE
   <button class="tab" onclick="showTab('breakdown',this)">Year 1 breakdown</button>
 </div>
 
+<div style="text-align:right;margin-bottom:1rem">
+  <button id="btnDownloadChart" class="tab" style="background:#1F3864;color:#fff;border-color:#1F3864;font-size:12px;padding:6px 12px">
+    Download 20-yr cash flow (PNG) ↓
+  </button>
+</div>
+
 <div id="pnl-cashflow">
   <div class="leg">
     <span><span class="sw" style="background:#534AB7"></span>Cumulative cash flow</span>
@@ -321,21 +327,22 @@ subtitle: "Mechatron M18KD-20 dual-axis trackers · 72× 595W panels each · CCE
 
   function rebuildBreakdown(cf, fed){
     const macrs_yr1 = cf.macrs[0];
-    // Waterfall: start with gross cost, subtract ITC, MACRS yr1, bill savings → show remaining
+    // Horizontal stacked bar showing the cash flow: ITC, MACRS, savings build up, then net outlay as negative deficit
     mkChart('cBreakdown',{type:'bar',data:{
       labels:['Year 1 cash position'],
       datasets:[
-        {label:'Net outlay (remaining)',data:[cf.gross-cf.itc-macrs_yr1-cf.yr1_savings],backgroundColor:'#888780',stack:'s'},
-        {label:'Bill savings',data:[cf.yr1_savings],backgroundColor:'#639922',stack:'s'},
-        {label:'MACRS Yr 1',data:[macrs_yr1],backgroundColor:'#534AB7',stack:'s'},
         {label:'ITC credit',data:[cf.itc],backgroundColor:'#1D9E75',stack:'s'},
+        {label:'MACRS Yr 1',data:[macrs_yr1],backgroundColor:'#534AB7',stack:'s'},
+        {label:'Bill savings',data:[cf.yr1_savings],backgroundColor:'#639922',stack:'s'},
+        {label:'Net outlay (remaining)',data:[ -(cf.gross - cf.itc - macrs_yr1 - cf.yr1_savings) ],backgroundColor:'#888780',stack:'s'},
       ]},options:{...baseOpts,
+      indexAxis: 'y', // Horizontal bars
       scales:{...baseOpts.scales,
-        x:{...baseOpts.scales.x,stacked:true},
-        y:{...baseOpts.scales.y,stacked:true,
-           ticks:{...baseOpts.scales.y.ticks,callback:v=>'$'+(v/1000).toFixed(0)+'k'}}},
+        x:{...baseOpts.scales.x,stacked:true,
+           ticks:{...baseOpts.scales.x.ticks,callback:v=> (v<0?'-$':'$') + Math.abs(v/1000).toFixed(0) + 'k'}},
+        y:{...baseOpts.scales.y,stacked:true}},
       plugins:{legend:{display:false},tooltip:{callbacks:{
-        label:c=>c.dataset.label+': $'+Math.round(c.parsed.y).toLocaleString()
+        label:c=>c.dataset.label+': ' + (c.parsed.x<0?'-$':'$') + Math.abs(Math.round(c.parsed.x)).toLocaleString()
       }}}}});
   }
 
@@ -350,8 +357,89 @@ subtitle: "Mechatron M18KD-20 dual-axis trackers · 72× 595W panels each · CCE
     if(name==='cashflow') rebuildCashflow(cf);
     else if(name==='monthly') rebuildAnnual(cf);
     else rebuildBreakdown(cf,fed);
+
+    // Update download button
+    const downloadBtn = document.getElementById('btnDownloadChart');
+    if(name === 'cashflow'){
+      downloadBtn.textContent = 'Download 20-yr cash flow (PNG) ↓';
+      downloadBtn.onclick = () => downloadChart('cCashflow', '20-Year Cash Flow', [
+        {label: 'Cumulative cash flow', color: '#534AB7'},
+        {label: 'Break-even', color: '#D85A30', dashed: true}
+      ]);
+    } else if(name === 'monthly'){
+      downloadBtn.textContent = 'Download annual savings (PNG) ↓';
+      downloadBtn.onclick = () => downloadChart('cAnnual', 'Annual Savings Breakdown', [
+        {label: 'Bill savings', color: '#639922'},
+        {label: 'MACRS + ITC benefit', color: '#534AB7'},
+        {label: 'O&M cost', color: '#D85A30'}
+      ]);
+    } else if(name === 'breakdown'){
+      downloadBtn.textContent = 'Download year 1 breakdown (PNG) ↓';
+      downloadBtn.onclick = () => downloadChart('cBreakdown', 'Year 1 Cash Position Breakdown', [
+        {label: 'ITC credit', color: '#1D9E75'},
+        {label: 'MACRS Yr 1 benefit', color: '#534AB7'},
+        {label: 'Bill savings', color: '#639922'},
+        {label: 'Net outlay (remaining)', color: '#888780'}
+      ]);
+    }
   }
   window.showTab = showTab;
+
+  // Download function for individual charts
+  function downloadChart(canvasId, title, legendItems) {
+    const canvas = document.getElementById(canvasId);
+    
+    // 1. Setup a temporary canvas with extra height for title and legend
+    const tempCanvas = document.createElement('canvas');
+    const padding = 60; // Space for Title
+    const legendSpace = 40; // Space for Legend at bottom
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height + padding + legendSpace;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    // 2. Background
+    tempCtx.fillStyle = '#FFFFFF';
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+    // 3. Draw Title
+    tempCtx.fillStyle = '#1F3864';
+    tempCtx.font = 'bold 18px sans-serif';
+    tempCtx.fillText(title, 20, 30);
+
+    // 4. Draw the Chart itself
+    tempCtx.drawImage(canvas, 0, padding);
+
+    // 5. Draw Legend
+    const legendY = tempCanvas.height - 25;
+    tempCtx.font = '11px sans-serif';
+    
+    function drawLegendItem(label, color, x, isDashed = false) {
+      tempCtx.fillStyle = color;
+      if (isDashed) {
+        tempCtx.setLineDash([3, 2]);
+        tempCtx.strokeStyle = color;
+        tempCtx.strokeRect(x, legendY - 8, 12, 12);
+        tempCtx.setLineDash([]);
+      } else {
+        tempCtx.fillRect(x, legendY - 8, 12, 12);
+      }
+      tempCtx.fillStyle = '#333';
+      tempCtx.fillText(label, x + 18, legendY + 2);
+      return x + tempCtx.measureText(label).width + 40;
+    }
+
+    let nextX = 20;
+    legendItems.forEach(item => {
+      nextX = drawLegendItem(item.label, item.color, nextX, item.dashed);
+    });
+
+    // 6. Final Export
+    const {n} = getParams();
+    const link = document.createElement('a');
+    link.download = `${title.replace(/\s+/g, '-')}-${n}-Trackers.png`;
+    link.href = tempCanvas.toDataURL('image/png');
+    link.click();
+  }
 
   // Sliders
   document.getElementById('sTrackers').addEventListener('input', function(){
@@ -364,5 +452,9 @@ subtitle: "Mechatron M18KD-20 dual-axis trackers · 72× 595W panels each · CCE
     el.addEventListener('input', ()=>{ out.textContent = el.value+'%'; update(); });
   });
 
-  setTimeout(()=>{ update(); rebuildCashflow(calcCashflows(numTrackers,0.07,0.05,0.30)); }, 150);
+  setTimeout(()=>{ 
+    update(); 
+    showTab('cashflow'); // Set initial tab and button
+  }, 150);
+  
 </script>
