@@ -36,9 +36,14 @@ subtitle: "Average daily load profile by month · Adjust trackers to see solar o
   </div>
   <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px">
     <div style="display:flex;flex-wrap:wrap;gap:6px" id="monthBtns"></div>
-    <button id="btnDownload" class="tab" style="background:#1F3864;color:#fff;border-color:#1F3864;font-size:12px;padding:6px 12px">
-      Average daily load profile (PNG) ↓
-    </button>
+    <div style="display:flex;gap:8px">
+      <button id="btnDownloadProfile" class="tab" style="background:#1F3864;color:#fff;border-color:#1F3864;font-size:12px;padding:6px 12px">
+        Average daily load profile (PNG) ↓
+      </button>
+      <button id="btnDownloadMonthly" class="tab" style="background:#1F3864;color:#fff;border-color:#1F3864;font-size:12px;padding:6px 12px">
+        Monthly energy offset summary (PNG) ↓
+      </button>
+    </div>
   </div>
 </div>
 
@@ -284,8 +289,8 @@ sl.addEventListener('input', () => {
 
 setTimeout(update, 150);
 
-// Add Download Functionality
-document.getElementById('btnDownload').onclick = function() {
+// Add Download Functionality for Profile Chart
+document.getElementById('btnDownloadProfile').onclick = function() {
   const canvas = document.getElementById('cProfile');
   
   // 1. Setup a temporary canvas with extra height for title and legend
@@ -340,7 +345,58 @@ document.getElementById('btnDownload').onclick = function() {
 
   // 6. Final Export
   const link = document.createElement('a');
-  link.download = `Solar-Analysis-${monthName}-${numTrackers}-Trackers.png`;
+  link.download = `Solar-Analysis-Profile-${monthName}-${numTrackers}-Trackers.png`;
+  link.href = tempCanvas.toDataURL('image/png');
+  link.click();
+};
+
+// Add Download Functionality for Monthly Chart
+document.getElementById('btnDownloadMonthly').onclick = function() {
+  const canvas = document.getElementById('cMonthly');
+  
+  // 1. Setup a temporary canvas with extra height for title and legend
+  const tempCanvas = document.createElement('canvas');
+  const padding = 60; // Space for Title
+  const legendSpace = 40; // Space for Legend at bottom
+  tempCanvas.width = canvas.width;
+  tempCanvas.height = canvas.height + padding + legendSpace;
+  const tempCtx = tempCanvas.getContext('2d');
+
+  // 2. Background
+  tempCtx.fillStyle = '#FFFFFF';
+  tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+  // 3. Draw Title
+  tempCtx.fillStyle = '#1F3864';
+  tempCtx.font = 'bold 18px sans-serif';
+  tempCtx.fillText('Monthly Energy Offset Summary', 20, 30);
+  
+  tempCtx.font = '14px sans-serif';
+  tempCtx.fillStyle = '#666';
+  tempCtx.fillText(`System Size: ${numTrackers} Trackers`, 20, 52);
+
+  // 4. Draw the Chart itself
+  tempCtx.drawImage(canvas, 0, padding);
+
+  // 5. Draw Legend
+  const legendY = tempCanvas.height - 25;
+  tempCtx.font = '11px sans-serif';
+  
+  function drawLegendItem(label, color, x) {
+    tempCtx.fillStyle = color;
+    tempCtx.fillRect(x, legendY - 8, 12, 12);
+    tempCtx.fillStyle = '#333';
+    tempCtx.fillText(label, x + 18, legendY + 2);
+    return x + tempCtx.measureText(label).width + 40;
+  }
+
+  let nextX = 20;
+  nextX = drawLegendItem('Solar Offset', '#1D9E75', nextX);
+  nextX = drawLegendItem('Remaining Load', 'rgba(216,90,48,0.25)', nextX);
+
+  // 6. Final Export
+  const link = document.createElement('a');
+  link.download = `Solar-Analysis-Monthly-${numTrackers}-Trackers.png`;
   link.href = tempCanvas.toDataURL('image/png');
   link.click();
 };
